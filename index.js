@@ -66,9 +66,9 @@ server.listen(8081,(req,res)=>{
   console.log("server is running on port 8080");
 })
 
-// server.get("*", (req, res) => {
-//   res.sendFile(path.resolve(__dirname, "build", "index.html"));
-// });
+server.get("/", (req, res) => {
+  res.send("Hello from Arkaprava!");
+});
 
 // exports.helloWorld = onRequest((req, res) => {
 //   server(req, res);
