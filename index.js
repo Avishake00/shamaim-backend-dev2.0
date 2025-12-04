@@ -62,7 +62,7 @@ async function main() {
   console.log("database connected");
 }
 
-server.listen(8080,(req,res)=>{
+server.listen(8081,(req,res)=>{
   console.log("server is running on port 8080");
 })
 
