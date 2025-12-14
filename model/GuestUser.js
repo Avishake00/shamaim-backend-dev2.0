@@ -9,10 +9,7 @@ const guestUserSchema = new Schema({
             productId: { type: String },
             price: { type: Number },
             qty: { type: Number },
-            size: {
-                name: { type: String },
-                inStock: { type: Boolean }
-            }
+            size: { type: Schema.Types.Mixed }
         }
     ],
     address: {

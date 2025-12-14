@@ -38,8 +38,13 @@ router.post('/addToCart', async (req, res) => {
             productId: productId,
             price: price,
             qty: qty,
-            size: size
+            size: {
+                name: size,
+                inStock: true
+            }
         }
+
+        console.log(item);
 
         const newUser = new GuestUser({
             name: 'guest',
@@ -66,23 +71,35 @@ router.put('/addToCart/:id', async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        const productExists = user.cart.some(item =>
-            item.productId === productId && item.size.name === size.name
+        // Check if product with same size already exists
+        const productExists = user.cart.some(
+            item =>
+                item.productId.toString() === productId &&
+                item.size.name === size
         );
 
         if (productExists) {
             return res.status(400).json({ message: "Product already in cart" });
         }
 
-        user.cart.push({ productId, price, qty, size });
+        user.cart.push({
+            productId,
+            price,
+            qty,
+            size: {
+                name: size,
+                inStock: true
+            }
+        });
 
         await user.save();
 
         res.status(200).json({ message: "Item added to cart" });
     } catch (error) {
-        res.status(500).json({ message: error });
+        res.status(500).json({ message: error.message });
     }
 });
+
 
 router.put('/clearCart/:id', async (req, res) => {
     try {
