@@ -9,7 +9,7 @@ const authenticateShiprocket = async () => {
       "https://apiv2.shiprocket.in/v1/external/auth/login",
       {
         email: "kunalkamat3@gmail.com",
-        password: "kunal@shiprocket",
+        password: "P%9@Qi!fAVn#tYB&w14wBueVBG1WVSzi",
       }
     );
     shiprocketAuthToken = response.data.token;

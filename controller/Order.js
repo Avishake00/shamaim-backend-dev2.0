@@ -192,13 +192,13 @@ exports.confirmOrder = async (req, res) => {
             },
           },
         ],
-        subject: "Order Confirmation -Thank You for Shopping with Shamaim.in!",
+        subject: "Order Confirmation - Thank You for Shopping with Shamaim.in!",
         htmlbody: "<div><b> Thank you for choosing Shamaim.in, your trusted online destination for trendy and fashionable clothing. We are delighted to inform you that your order has been successfully placed and is being processed with great care and attention to detail. This email serves as confirmation of your purchase.</b></div>",
       })
       .then((resp) =>
          console.log("Email send sucessfully"))
       .catch((error) => {
-        console.log("err accoured");
+        console.log("Could not send email. Error: ", error);
       });
 
     res.send(savedOrder).status(200);
