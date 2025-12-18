@@ -1,12 +1,14 @@
+const mongoose = require("mongoose");
 const { Order } = require("../model/Order");
 const { nanoid } = require("nanoid");
 const { Product } = require("../model/Product");
-const {returnOrder}=require('../model/ReturnOrder');
+const { returnOrder } = require('../model/ReturnOrder');
 const { User } = require("../model/User");
 const { sendMail, invoiceTemplate } = require("../services/common");
 const axios = require("axios");
 const Razorpay = require("razorpay");
 const { SendMailClient } = require("zeptomail");
+const { log } = require("firebase-functions/logger");
 const url = "api.zeptomail.in/";
 const token =
   "Zoho-enczapikey PHtE6r1eEOi+j2F89xIAsfO6HsD2YIp4/+piJQIWtIxCDKIHH01Q+I8qm2LlrRt8B6FKEveTwNlt4r2a4brRLWq/NWYeW2qyqK3sx/VYSPOZsbq6x00atV8Sf0TdXYTmdNZv1yPWu97TNA==";
@@ -39,42 +41,65 @@ const getProductsStats = (items) => {
 };
 
 // Backend code
-exports.createRazorpayOrder = async (req, res) => {
-  const { amount } = req.body;
-  const instance = new Razorpay({
-    key_id: "rzp_live_3vTiOMXqTXi6Si",
-    key_secret: "YASBZBBF2PyzVlUqDhLFAzKf",
-  });
+// exports.createRazorpayOrder = async (req, res) => {
+//   const { amount } = req.body;
+//   const instance = new Razorpay({
+//     key_id: "rzp_live_3vTiOMXqTXi6Si",
+//     key_secret: "YASBZBBF2PyzVlUqDhLFAzKf",
+//   });
 
+//   try {
+//     const razorpayResponse = await instance.orders.create({
+//       amount: amount * 100,
+//       currency: "INR",
+//       order: req.body.order,
+//     });
+
+//     await confirmOrder(razorpayResponse);
+
+//     res.send(razorpayResponse);
+//   } catch (error) {
+//     res.status(400).json(error);
+//   }
+// };
+
+// Function to confirm the order with payment details
+// const confirmOrder = async (paymentDescription) => {
+//   try {
+//     console.log("Payment details:", paymentDescription);
+//   } catch (err) {
+//     console.error("Error confirming order:", err);
+//     // Handle error if necessary
+//   }
+// };
+
+exports.createRazorpayOrder = async (req, res) => {
   try {
-    const razorpayResponse = await instance.orders.create({
-      amount: amount * 100,
-      currency: "INR",
-      order: req.body.order,
+    const { amount } = req.body;
+
+    const instance = new Razorpay({
+      key_id: "rzp_live_3vTiOMXqTXi6Si",
+      key_secret: "YASBZBBF2PyzVlUqDhLFAzKf",
     });
 
-    await confirmOrder(razorpayResponse);
+    const razorpayOrder = await instance.orders.create({
+      amount: amount * 100,
+      currency: "INR",
+    });
 
-    res.send(razorpayResponse);
+    console.log("Payment details:", razorpayOrder);
+
+    return res.status(200).json(razorpayOrder);
+
   } catch (error) {
-    res.status(400).json(error);
-  }
-};
-// Function to confirm the order with payment details
-const confirmOrder = async (paymentDescription) => {
-  try {
-    console.log("Payment details:", paymentDescription);
-    console.log(paymentDescription);
-  } catch (err) {
-    console.error("Error confirming order:", err);
-    // Handle error if necessary
+    console.error("Razorpay order creation failed:", error);
+    return res.status(500).json({ message: "Failed to create Razorpay order" });
   }
 };
 
 exports.confirmOrder = async (req, res) => {
-  // Extract required fields from the request body
   try {
-    const {
+    let {
       firstName,
       lastName,
       addressLine1,
@@ -86,50 +111,56 @@ exports.confirmOrder = async (req, res) => {
       phone,
       items,
       paymentDetails,
+      user
     } = req.body;
 
-    for (let item of items) {
-      const productId = item.id;
-      if (productId) {
-        const product = await Product.findOne({ _id: productId });
-        // Continue with product processing
-      } else {
-        // Handle the case where product ID is not available
-        console.log("not found");
+    console.log("printing from confirm order:", req.body);
+
+    /* ---------- VALIDATIONS ---------- */
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "Items are required" });
+    }
+
+    if (!paymentDetails?.payMode) {
+      return res.status(400).json({ message: "Payment method missing" });
+    }
+
+    /* ---------- EMAIL FALLBACK ---------- */
+    if (!email && user) {
+      try {
+        const userDoc = await User.findById(user).select("email");
+        if (userDoc) email = userDoc.email;
+      } catch (err) {
+        console.error("Email fallback failed:", err.message);
       }
     }
 
-    // Create Shiprocket order payload
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    console.log("Resolved email:", email);
+
+    /* ---------- PRODUCT STATS ---------- */
+    console.log("Items before stats:", items);
     const productStats = getProductsStats(items);
+
+    /* ---------- SHIPROCKET PAYLOAD ---------- */
     const orderPayload = {
-      // create a unique ID here
       order_id: nanoid(),
-      order_date: new Date()
-        .toISOString()
-        .replace(/T/, " ")
-        .replace(/\..+/, ""),
+      order_date: new Date().toISOString().replace(/T/, " ").replace(/\..+/, ""),
       pickup_location: "Primary 2",
       billing_customer_name: firstName,
       billing_last_name: lastName,
       billing_address: addressLine1,
       billing_address_2: addressLine2,
       billing_city: city,
-      billing_pincode: parseInt(pincode),
+      billing_pincode: Number(pincode),
       billing_state: state,
       billing_country: "India",
       billing_email: email,
       billing_phone: phone,
       shipping_is_billing: true,
-      shipping_customer_name: "",
-      shipping_last_name: "",
-      shipping_address: "",
-      shipping_address_2: "",
-      shipping_city: "",
-      shipping_pincode: "",
-      shipping_country: "",
-      shipping_state: "",
-      shipping_email: "",
-      shipping_phone: "",
       order_items: items,
       payment_method: paymentDetails.payMode,
       sub_total: productStats.totalProductPrice,
@@ -139,76 +170,278 @@ exports.confirmOrder = async (req, res) => {
       weight: productStats.totalWeight,
     };
 
-    // Make request to Shiprocket API to create order
-    const response = await axios.post(
+    console.log("Order Payload:", orderPayload);
+
+    /* ---------- SHIPROCKET API (MANDATORY) ---------- */
+    const shiprocketResponse = await axios.post(
       `${shiprocketBaseUrl}orders/create/adhoc`,
       orderPayload,
       {
         headers: {
-          Authorization: req.headers.Authorization,
+          Authorization: req.headers.authorization || req.headers.Authorization,
           "Content-Type": "application/json",
         },
       }
     );
 
-    // Save the order to the database
-    const order = new Order({
+    /* ---------- SAVE ORDER (MANDATORY) ---------- */
+    const savedOrder = await new Order({
       ...req.body,
-      shiprocketResponse: response.data,
-    });
+      email,
+      shiprocketResponse: shiprocketResponse.data,
+    }).save();
 
-    const savedOrder = await order.save();
+    console.log("Order saved successfully:", savedOrder._id);
 
-    // items decresed after sucessfully order
-    for (let item of items) {
-      const productId = item.productid;
-      const productSize = await Product.findById(productId);
-      const size = item.size.name;
-      const stock = productSize.stock[0];
-      let productStock = stock[size];
-      if (productStock > 0) {
-        stock[size] -= item.units;
-        const product = await Product.findByIdAndUpdate(
-          productId,
-          { stock: stock },
-          { new: true }
+    /* ---------- STOCK UPDATE (OPTIONAL) ---------- */
+    try {
+      for (const item of items) {
+        const product = await Product.findById(item.productid);
+
+        if (!product) {
+          console.warn("Product not found:", item.productid);
+          continue;
+        }
+
+        const size = item.size;
+        if (!size) {
+          console.warn("Size missing for product:", product._id);
+          continue;
+        }
+
+        if (!Array.isArray(product.stock) || !product.stock[0]) {
+          console.warn("Stock structure invalid for product:", product._id);
+          continue;
+        }
+
+        const stock = product.stock[0];
+
+        const qtyToReduce = Number(item.units || item.quantity || 0);
+
+        if (!stock.hasOwnProperty(size)) {
+          console.warn(`Size ${size} not found in stock for product`, product._id);
+          continue;
+        }
+
+        if (stock[size] < qtyToReduce) {
+          console.warn(
+            `Insufficient stock for product ${product._id}, size ${size}`
+          );
+          continue;
+        }
+
+        stock[size] -= qtyToReduce;
+
+        product.markModified("stock"); // IMPORTANT for nested object
+        await product.save({ validateBeforeSave: false });
+
+        console.log(
+          `Stock updated: Product ${product._id}, Size ${size}, Remaining ${stock[size]}`
         );
       }
+
+      console.log("Stock update process completed");
+    } catch (err) {
+      console.error("Stock update failed:", err);
     }
-    let client = new SendMailClient({ url, token });
 
-    // send mail to before getting the order
-    client
-      .sendMail({
-        from: {
-          address: "support@shamaim.in",
-          name: "shamaim",
-        },
-        to: [
-          {
-            email_address: {
-              address: email,
-              name: firstName,
-            },
-          },
-        ],
-        subject: "Order Confirmation - Thank You for Shopping with Shamaim.in!",
-        htmlbody: "<div><b> Thank you for choosing Shamaim.in, your trusted online destination for trendy and fashionable clothing. We are delighted to inform you that your order has been successfully placed and is being processed with great care and attention to detail. This email serves as confirmation of your purchase.</b></div>",
-      })
-      .then((resp) =>
-         console.log("Email send sucessfully"))
-      .catch((error) => {
-        console.log("Could not send email. Error: ", error);
+    /* ---------- EMAIL (OPTIONAL) ---------- */
+    try {
+      const client = new SendMailClient({ url, token });
+      await client.sendMail({
+        from: { address: "support@shamaim.in", name: "Shamaim" },
+        to: [{ email_address: { address: email, name: firstName } }],
+        subject: "Order Confirmation - Shamaim.in",
+        htmlbody: "<b>Your order has been placed successfully.</b>",
       });
+      console.log("Order email sent successfully");
+    } catch (err) {
+      console.error("Email sending failed:", err.message);
+    }
 
-    res.send(savedOrder).status(200);
+    return res.status(200).json(savedOrder);
+
   } catch (err) {
-    res.status(500).json({
+    console.error("Order creation failed:", err);
+    return res.status(500).json({
       message: "Error creating order",
       error: err.message,
     });
   }
 };
+
+const crypto = require("crypto");
+
+exports.confirmPrepaidOrder = async (req, res) => {
+  try {
+    let {
+      firstName,
+      lastName,
+      addressLine1,
+      addressLine2,
+      city,
+      pincode,
+      state,
+      email,
+      phone,
+      items,
+      paymentDetails,
+      user
+    } = req.body;
+
+    console.log("printing from confirm prepaid order:", req.body);
+
+    /* ---------- VALIDATIONS ---------- */
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "Items are required" });
+    }
+
+    if (
+      !paymentDetails?.razorpay_order_id ||
+      !paymentDetails?.razorpay_payment_id ||
+      !paymentDetails?.razorpay_signature
+    ) {
+      return res.status(400).json({ message: "Razorpay payment details missing" });
+    }
+
+    /* ---------- RAZORPAY SIGNATURE VERIFY ---------- */
+    const body =
+      paymentDetails.razorpay_order_id +
+      "|" +
+      paymentDetails.razorpay_payment_id;
+
+    const expectedSignature = crypto
+      .createHmac("sha256", "YASBZBBF2PyzVlUqDhLFAzKf")
+      .update(body)
+      .digest("hex");
+
+    if (expectedSignature !== paymentDetails.razorpay_signature) {
+      return res.status(400).json({ message: "Invalid Razorpay signature" });
+    }
+
+    /* ---------- EMAIL FALLBACK ---------- */
+    if (!email && user) {
+      try {
+        const userDoc = await User.findById(user).select("email");
+        if (userDoc) email = userDoc.email;
+      } catch (err) {
+        console.error("Email fallback failed:", err.message);
+      }
+    }
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    console.log("Resolved email:", email);
+
+    /* ---------- PRODUCT STATS ---------- */
+    const productStats = getProductsStats(items);
+
+    /* ---------- SHIPROCKET PAYLOAD ---------- */
+    const orderPayload = {
+      order_id: nanoid(),
+      order_date: new Date().toISOString().replace(/T/, " ").replace(/\..+/, ""),
+      pickup_location: "Primary 2",
+
+      billing_customer_name: firstName,
+      billing_last_name: lastName,
+      billing_address: addressLine1,
+      billing_address_2: addressLine2,
+      billing_city: city,
+      billing_pincode: Number(pincode),
+      billing_state: state,
+      billing_country: "India",
+      billing_email: email,
+      billing_phone: phone,
+
+      shipping_is_billing: true,
+      order_items: items,
+      payment_method: "Prepaid",
+
+      sub_total: productStats.totalProductPrice,
+      length: productStats.totalLength,
+      breadth: productStats.totalBreadth,
+      height: productStats.totalHeight,
+      weight: productStats.totalWeight
+    };
+
+    console.log("Prepaid Order Payload:", orderPayload);
+
+    /* ---------- SHIPROCKET API ---------- */
+    const shiprocketResponse = await axios.post(
+      `${shiprocketBaseUrl}orders/create/adhoc`,
+      orderPayload,
+      {
+        headers: {
+          Authorization: req.headers.authorization || req.headers.Authorization,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    /* ---------- SAVE ORDER ---------- */
+    const savedOrder = await new Order({
+      ...req.body,
+      email,
+      paymentMethod: "online",
+      paymentStatus: "paid",
+      shiprocketResponse: shiprocketResponse.data
+    }).save();
+
+    console.log("Prepaid order saved:", savedOrder._id);
+
+    /* ---------- STOCK UPDATE ---------- */
+    try {
+      for (const item of items) {
+        const product = await Product.findById(item.productid);
+
+        if (!product) continue;
+
+        const size = item.size;
+        if (!size) continue;
+
+        if (!Array.isArray(product.stock) || !product.stock[0]) continue;
+
+        const stock = product.stock[0];
+        const qtyToReduce = Number(item.units || 0);
+
+        if (!stock.hasOwnProperty(size)) continue;
+        if (stock[size] < qtyToReduce) continue;
+
+        stock[size] -= qtyToReduce;
+        product.markModified("stock");
+
+        await product.save({ validateBeforeSave: false });
+      }
+    } catch (err) {
+      console.error("Stock update failed:", err);
+    }
+
+    /* ---------- EMAIL ---------- */
+    try {
+      const client = new SendMailClient({ url, token });
+      await client.sendMail({
+        from: { address: "support@shamaim.in", name: "Shamaim" },
+        to: [{ email_address: { address: email, name: firstName } }],
+        subject: "Order Confirmation - Shamaim.in",
+        htmlbody: "<b>Your prepaid order has been placed successfully.</b>"
+      });
+    } catch (err) {
+      console.error("Email sending failed:", err.message);
+    }
+
+    return res.status(200).json(savedOrder);
+
+  } catch (err) {
+    console.error("Prepaid order creation failed:", err);
+    return res.status(500).json({
+      message: "Error creating prepaid order",
+      error: err.message
+    });
+  }
+};
+
 
 exports.deleteOrder = async (req, res) => {
   const { id } = req.params;
@@ -345,9 +578,9 @@ exports.returnOrder = async (req, res) => {
       }
     );
 
-    if (response ) {
+    if (response) {
       try {
-        const orderId = orderid; 
+        const orderId = orderid;
         for (const item of items) {
           const itemId = item.id;
           await Order.findOneAndUpdate(
@@ -430,10 +663,10 @@ exports.fetchOrderById = async (req, res) => {
 };
 
 
-exports.fetchproductbasedonId=async(req,res)=>{
-const id=req.params.id;
-const data=await Order.findById({_id:id});
-res.send(data);
+exports.fetchproductbasedonId = async (req, res) => {
+  const id = req.params.id;
+  const data = await Order.findById({ _id: id });
+  res.send(data);
 }
 
 

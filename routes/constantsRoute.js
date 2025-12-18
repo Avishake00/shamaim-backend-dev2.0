@@ -7,7 +7,7 @@ router.get('/getActiveCouponCode', async (req, res) => {
     try {
         const activeCouponCode = {
             code: "FORYOU50",
-            amountValue: 50,
+            amountValue: 548,
         };
 
         res.status(200).json(activeCouponCode);

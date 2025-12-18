@@ -11,7 +11,8 @@ const {
   fetchOrderById,
   fetchOrderByIdFormDb,
   fechallproductsdummy,
-  fetchproductbasedonId
+  fetchproductbasedonId,
+  confirmPrepaidOrder
   
 } = require("../controller/Order");
 
@@ -19,6 +20,7 @@ const router = express.Router();
 //  /orders is already added in base path
 router
   .post("/", confirmOrder)
+  .post("/prepaid/confirm", confirmPrepaidOrder)
   .post("/create", createRazorpayOrder)
   .get("/own/:id", fetchOrdersByUser)
   .delete("/:id", deleteOrder)
