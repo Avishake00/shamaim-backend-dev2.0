@@ -8,8 +8,8 @@ const authenticateShiprocket = async () => {
     const response = await axios.post(
       "https://apiv2.shiprocket.in/v1/external/auth/login",
       {
-        email: "kunalkamat3@gmail.com",
-        password: "P%9@Qi!fAVn#tYB&w14wBueVBG1WVSzi",
+        email: "aamirrazdan786@gmail.com",
+        password: "WFnrjMaaODVZ#Kb&Ts2R2ZB^1^!*#Jwc",
       }
     );
     shiprocketAuthToken = response.data.token;
