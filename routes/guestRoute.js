@@ -38,10 +38,7 @@ router.post('/addToCart', async (req, res) => {
             productId: productId,
             price: price,
             qty: qty,
-            size: {
-                name: size,
-                inStock: true
-            }
+            size: size
         }
 
         console.log(item);
@@ -75,21 +72,18 @@ router.put('/addToCart/:id', async (req, res) => {
         const productExists = user.cart.some(
             item =>
                 item.productId.toString() === productId &&
-                item.size.name === size
+                item.size === size
         );
 
         if (productExists) {
-            return res.status(400).json({ message: "Product already in cart" });
+            return res.status(400).json({ message: "Product already in cart with same size." });
         }
 
         user.cart.push({
             productId,
             price,
             qty,
-            size: {
-                name: size,
-                inStock: true
-            }
+            size: size
         });
 
         await user.save();
@@ -170,7 +164,6 @@ router.put('/removeCartItem/:userId/:itemId', async (req, res) => {
 router.put('/addAddress/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-
         const { data } = req.body;
 
         const user = await GuestUser.findById(userId);
@@ -179,21 +172,42 @@ router.put('/addAddress/:userId', async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
+        const isUpdate =
+            user.address &&
+            (user.address.street ||
+                user.address.city ||
+                user.address.state ||
+                user.address.pinCode ||
+                user.address.phone);
+
         user.name = data.name;
         user.email = data.email;
-        user.address.street = data.street;
-        user.address.city = data.city;
-        user.address.state = data.state;
-        user.address.pinCode = data.pinCode;
-        user.address.phone = data.phone;
+
+        user.address = {
+            street: data.street,
+            city: data.city,
+            state: data.state,
+            pinCode: data.pinCode,
+            phone: data.phone,
+        };
 
         await user.save();
 
-        res.status(200).json({ message: "Shipping address added successfully", address: { name: user.name, email: user.email, address: user.address } });
+        res.status(200).json({
+            message: isUpdate
+                ? "Shipping address updated successfully."
+                : "Shipping address added successfully.",
+            address: {
+                name: user.name,
+                email: user.email,
+                address: user.address,
+            },
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
+
 
 router.get('/getGuestAddress/:id', async (req, res) => {
     const { id } = req.params;

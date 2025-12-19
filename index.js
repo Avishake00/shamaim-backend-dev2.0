@@ -19,6 +19,7 @@ const newRealise=require('./routes/newRealise');
 const opts = {};
 
 const guestRoutes = require('./routes/guestRoute');
+const constantsRoute = require('./routes/constantsRoute');
 
 
 server.use(express.static(path.resolve(__dirname, "build")));
@@ -52,6 +53,7 @@ server.use("/orders", ordersRouter.router);
 server.use('/conatctus',constrouter.router);
 server.use('/',newRealise.router);
 server.use('/api', guestRoutes);
+server.use('/constants', constantsRoute);
 
 main().catch((err) => console.log(err));
 
@@ -62,7 +64,7 @@ async function main() {
   console.log("database connected");
 }
 
-server.listen(8081,(req,res)=>{
+server.listen(8080,(req,res)=>{
   console.log("server is running on port 8080");
 })
 
