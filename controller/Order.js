@@ -413,6 +413,8 @@ exports.confirmPrepaidOrder = async (req, res) => {
         product.markModified("stock");
 
         await product.save({ validateBeforeSave: false });
+
+        console.log("Stock updated successfully");
       }
     } catch (err) {
       console.error("Stock update failed:", err);

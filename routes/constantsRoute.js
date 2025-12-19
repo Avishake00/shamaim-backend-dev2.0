@@ -5,12 +5,18 @@ const router = express.Router();
 router.get('/getActiveCouponCode', async (req, res) => {
 
     try {
-        const activeCouponCode = {
-            code: "FORYOU50",
-            amountValue: 548,
-        };
+        const activeCouponCodeArray = [
+            {
+                code: "FORYOU50",
+                amountValue: 50,
+            },
+            {
+                code: "TEST@25",
+                amountValue: 548,
+            }
+        ];
 
-        res.status(200).json(activeCouponCode);
+        res.status(200).json(activeCouponCodeArray);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
