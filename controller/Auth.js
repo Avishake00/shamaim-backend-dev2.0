@@ -3,12 +3,12 @@ const mongoose = require("mongoose");
 const sendZohoMail = require("./zohomail");
 const { OAuth2Client } = require("google-auth-library");
 const client = new OAuth2Client("253251908610-1d8pm8fcsapoodmdpf4slat8a5eusrcg.apps.googleusercontent.com");
-const {sendNodemail}=require('../services/commanMail');
+const { sendNodemail } = require('../services/commanMail');
 
 exports.loginUser = async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     let user = await User.findOne({ email });
 
     // Generate a 4-digit OTP
@@ -48,12 +48,12 @@ exports.verifyOtp = async (req, res) => {
     let CurrentDate = new Date();
     // get user detaila for Otp and updateAt time for cheking time is not greter than 5
     let getUserDetails = await User.findOne({ email });
-    let id=getUserDetails.id;
-      console.log(id);
+    let id = getUserDetails.id;
+    console.log(id);
     // check  otp time diff is not greter than 5 
     if ((CurrentDate.getMinutes() - getUserDetails.updatedAt.getMinutes()) < 35) {
       if (getUserDetails.otp == otp) {
-        res.status(200).send({"id":id});
+        res.status(200).send({ "id": id });
       } else {
         res.status(200).send("otp not match");
       }
@@ -106,28 +106,52 @@ exports.verifyGoogleToken = async (req, res) => {
   }
 };
 
-exports.insertGoogleEmail=async(req,res)=>{
-  let {email}=req.query;
-  try{
- let user=await User.findOne({email});
- let getUserDetails;
-  if(!user){
-    let user= new User({email});
-    await user.save();
-    getUserDetails=await User.findOne({email});
-    
-  }
+exports.insertGoogleEmail = async (req, res) => {
+  
+  const { token } = req.body;
 
-  if(user){
-    res.send(user.id);
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience:
+        "253251908610-1d8pm8fcsapoodmdpf4slat8a5eusrcg.apps.googleusercontent.com",
+    });
+
+    const payload = ticket.getPayload();
+
+    const { email, name } = payload;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email not found" });
+    }
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = new User({
+        email,
+        name
+      });
+
+      await user.save();
+    } else {
+      user.name = name;
+      await user.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+      },
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ success: false, message: "Invalid Google Token" });
   }
-  else if(getUserDetails){
-    res.send(getUserDetails.id)
-  }
-  }
-  catch(error){
-    res.send(error);
-  }
-}
+};
 
 
