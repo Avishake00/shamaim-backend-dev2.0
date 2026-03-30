@@ -21,6 +21,20 @@ const productDimensions = {
   weight: 0.35,
 };
 
+const formatOrderItems = (items) => {
+  return items.map((item) => {
+    const size = item.size || item.variant || "";
+    return {
+      ...item,
+      name: size ? `${item.name} - Size: ${size}` : item.name,
+      sku: item.sku || `${item.name}-${size || "NA"}`,
+      variant: size,
+      units: parseInt(item.units),
+      selling_price: parseFloat(item.selling_price),
+    };
+  });
+};
+
 const getProductsStats = (items) => {
   let totalProductQuantity = 0;
   let totalProductPrice = 0;
@@ -141,11 +155,10 @@ exports.confirmOrder = async (req, res) => {
 
     console.log("Resolved email:", email);
 
-    /* ---------- PRODUCT STATS ---------- */
-    console.log("Items before stats:", items);
-    const productStats = getProductsStats(items);
-
     /* ---------- SHIPROCKET PAYLOAD ---------- */
+    const formattedItems = formatOrderItems(items);
+    const productStats = getProductsStats(formattedItems);
+
     const orderPayload = {
       order_id: nanoid(),
       order_date: new Date().toISOString().replace(/T/, " ").replace(/\..+/, ""),
@@ -161,7 +174,7 @@ exports.confirmOrder = async (req, res) => {
       billing_email: email,
       billing_phone: phone,
       shipping_is_billing: true,
-      order_items: items,
+      order_items: formattedItems,
       payment_method: paymentDetails.payMode,
       sub_total: productStats.totalProductPrice,
       length: productStats.totalLength,
@@ -335,15 +348,14 @@ exports.confirmPrepaidOrder = async (req, res) => {
 
     console.log("Resolved email:", email);
 
-    /* ---------- PRODUCT STATS ---------- */
-    const productStats = getProductsStats(items);
-
     /* ---------- SHIPROCKET PAYLOAD ---------- */
+    const formattedItems = formatOrderItems(items);
+    const productStats = getProductsStats(formattedItems);
+
     const orderPayload = {
       order_id: nanoid(),
       order_date: new Date().toISOString().replace(/T/, " ").replace(/\..+/, ""),
       pickup_location: "Primary 2",
-
       billing_customer_name: firstName,
       billing_last_name: lastName,
       billing_address: addressLine1,
@@ -354,11 +366,9 @@ exports.confirmPrepaidOrder = async (req, res) => {
       billing_country: "India",
       billing_email: email,
       billing_phone: phone,
-
       shipping_is_billing: true,
-      order_items: items,
+      order_items: formattedItems,
       payment_method: "Prepaid",
-
       sub_total: productStats.totalProductPrice,
       length: productStats.totalLength,
       breadth: productStats.totalBreadth,
@@ -443,7 +453,6 @@ exports.confirmPrepaidOrder = async (req, res) => {
     });
   }
 };
-
 
 exports.deleteOrder = async (req, res) => {
   const { id } = req.params;
@@ -609,7 +618,6 @@ exports.returnOrder = async (req, res) => {
   }
 };
 
-
 exports.fetchOrdersByUser = async (req, res) => {
   const id = req.params.id;
   try {
@@ -620,7 +628,6 @@ exports.fetchOrdersByUser = async (req, res) => {
     res.status(400).json(err);
   }
 };
-
 
 exports.fetchOrderByIdFormDb = async (req, res) => {
   try {
@@ -663,7 +670,6 @@ exports.fetchOrderById = async (req, res) => {
     });
   }
 };
-
 
 exports.fetchproductbasedonId = async (req, res) => {
   const id = req.params.id;

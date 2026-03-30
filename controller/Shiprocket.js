@@ -29,13 +29,17 @@ const getProductsStats = (items) => {
 };
 
 const formatOrderItems = (items) => {
-  return items.map((item) => ({
-    name: item.name,
-    sku: item.sku || `${item.name}-${item.size || item.variant || "NA"}`,
-    units: parseInt(item.units),
-    selling_price: parseFloat(item.selling_price),
-    variant: item.size || item.variant || "",
-  }));
+  return items.map((item) => {
+    const size = item.size || item.variant || "";
+
+    return {
+      name: size ? `${item.name} (${size})` : item.name,
+      sku: item.sku || `${item.name}-${size || "NA"}`,
+      units: parseInt(item.units),
+      selling_price: parseFloat(item.selling_price),
+      variant: size,
+    };
+  });
 };
 
 exports.createOrder = async (req, res) => {
@@ -53,6 +57,8 @@ exports.createOrder = async (req, res) => {
       items,
       payMode,
     } = req.body;
+
+    console.log("items from body:", items);
 
     const formattedItems = formatOrderItems(items);
     let productStats = getProductsStats(formattedItems);
@@ -183,7 +189,7 @@ exports.returnOrder = async (req, res) => {
       items,
     } = req.body;
 
-    const formattedItems = formatOrderItems(items); // 👈 UPDATED
+    const formattedItems = formatOrderItems(items);
     let productStats = getProductsStats(formattedItems);
 
     let reqModal = {
@@ -214,7 +220,7 @@ exports.returnOrder = async (req, res) => {
       shipping_email: "shamaimlifestyle@gmail.com",
       shipping_phone: "9875505219",
 
-      order_items: formattedItems, // 👈 UPDATED
+      order_items: formattedItems,
       payment_method: "Prepaid",
       sub_total: productStats.totalProductPrice,
 
