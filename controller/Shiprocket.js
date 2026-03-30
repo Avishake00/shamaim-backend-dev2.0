@@ -28,6 +28,16 @@ const getProductsStats = (items) => {
   };
 };
 
+const formatOrderItems = (items) => {
+  return items.map((item) => ({
+    name: item.name,
+    sku: item.sku || `${item.name}-${item.size || item.variant || "NA"}`,
+    units: parseInt(item.units),
+    selling_price: parseFloat(item.selling_price),
+    variant: item.size || item.variant || "",
+  }));
+};
+
 exports.createOrder = async (req, res) => {
   try {
     const {
@@ -43,15 +53,18 @@ exports.createOrder = async (req, res) => {
       items,
       payMode,
     } = req.body;
-    let productStats = getProductsStats(items);
+
+    const formattedItems = formatOrderItems(items);
+    let productStats = getProductsStats(formattedItems);
+
     let reqModal = {
-      // create a unique ID here
       order_id: "542847284",
       order_date: new Date()
         .toISOString()
         .replace(/T/, " ")
         .replace(/\..+/, ""),
       pickup_location: "Primary",
+
       billing_customer_name: firstName,
       billing_last_name: lastName,
       billing_address: addressLine1,
@@ -62,25 +75,19 @@ exports.createOrder = async (req, res) => {
       billing_country: "India",
       billing_email: email,
       billing_phone: phone,
+
       shipping_is_billing: true,
-      shipping_customer_name: "",
-      shipping_last_name: "",
-      shipping_address: "",
-      shipping_address_2: "",
-      shipping_city: "",
-      shipping_pincode: "",
-      shipping_country: "",
-      shipping_state: "",
-      shipping_email: "",
-      shipping_phone: "",
-      order_items: items,
+
+      order_items: formattedItems,
       payment_method: payMode,
       sub_total: productStats.totalProductPrice,
+
       length: productStats.totalLength,
       breadth: productStats.totalBreadth,
       height: productStats.totalHeight,
       weight: productStats.totalWeight,
     };
+
     const response = await axios.post(
       `${shiprocketBaseUrl}orders/create/adhoc`,
       reqModal,
@@ -91,6 +98,7 @@ exports.createOrder = async (req, res) => {
         },
       }
     );
+
     res.status(201).json(response.data);
   } catch (err) {
     res.status(400).json({
@@ -174,14 +182,17 @@ exports.returnOrder = async (req, res) => {
       phone,
       items,
     } = req.body;
-    let productStats = getProductsStats(items);
+
+    const formattedItems = formatOrderItems(items); // 👈 UPDATED
+    let productStats = getProductsStats(formattedItems);
+
     let reqModal = {
-      // unique ID here
       order_id: "",
       order_date: new Date()
         .toISOString()
         .replace(/T/, " ")
         .replace(/\..+/, ""),
+
       pickup_customer_name: firstName,
       pickup_last_name: lastName,
       pickup_address: addressLine1,
@@ -192,24 +203,27 @@ exports.returnOrder = async (req, res) => {
       pickup_country: "India",
       pickup_email: email,
       pickup_phone: phone,
+
       shipping_customer_name: "Niladri",
       shipping_last_name: "Biswas",
       shipping_address: "11B, Bowali Mondal Road",
-      shipping_address_2: "",
       shipping_city: "Kolkata",
       shipping_pincode: "700026",
       shipping_country: "India",
       shipping_state: "West Bengal",
       shipping_email: "shamaimlifestyle@gmail.com",
       shipping_phone: "9875505219",
-      order_items: items,
+
+      order_items: formattedItems, // 👈 UPDATED
       payment_method: "Prepaid",
       sub_total: productStats.totalProductPrice,
+
       length: productStats.totalLength,
       breadth: productStats.totalBreadth,
       height: productStats.totalHeight,
       weight: productStats.totalWeight,
     };
+
     const response = await axios.post(
       `${shiprocketBaseUrl}orders/create/return`,
       reqModal,
@@ -220,10 +234,11 @@ exports.returnOrder = async (req, res) => {
         },
       }
     );
+
     res.send({ message: "Order has been returned" });
   } catch (error) {
     res.status(400).json({
-      message: "Error canceling order",
+      message: "Error returning order",
       error: error.message,
     });
   }
