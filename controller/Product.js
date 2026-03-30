@@ -13,14 +13,15 @@ exports.createProduct = async (req, res) => {
 };
 
 exports.fetchAllProducts = async (req, res) => {
-  const { SleeveLength, subcategory, gender,category, color,pages,limit=18,genre} = req.query;
+  const { SleeveLength, subcategory, gender, category, color, pages, limit = 18, genre } = req.query;
 
   let conditions = {};
- 
+  
   if (SleeveLength) {
     conditions.SleeveLength = { $in: SleeveLength.split(',') };
   }
-  if (subcategory) {``
+  if (subcategory) {
+    ``
     conditions.subcategory = { $in: subcategory.split(',') };
   }
   if (gender) {
@@ -29,34 +30,34 @@ exports.fetchAllProducts = async (req, res) => {
   if (color) {
     conditions.color = { $in: color.split(',') };
   }
-  if(category){
-    conditions.category={$in:category.split(',')};
+  if (category) {
+    conditions.category = { $in: category.split(',') };
   }
 
-  if(genre){
-    conditions.genre={$in:genre.split(',')};
+  if (genre) {
+    conditions.genre = { $in: genre.split(',') };
   }
-  
+
 
   try {
     // Perform count and find operations in parallel
     const [totalDocs, docs] = await Promise.all([
       Product.countDocuments(conditions),
       Product.find(conditions)
-       .skip((parseInt(pages)-1)*limit)
-       .limit(Number(limit))
-       .exec()
+        .skip((parseInt(pages) - 1) * limit)
+        .limit(Number(limit))
+        .exec()
     ]);
 
     // Set response headers for pagination
     res.set('X-Total-Count', totalDocs);
-    let totalleft=0;
-    totalleft=totalDocs-(parseInt(pages))*limit;
+    let totalleft = 0;
+    totalleft = totalDocs - (parseInt(pages)) * limit;
     res.set('X-Total-Pages', Math.ceil(totalDocs / limit));
     res.set('X-Current-Page', pages);
 
     // Send response
-    res.status(200).json({docs:docs,totalDocs:totalDocs,totalleft:totalleft});
+    res.status(200).json({ docs: docs, totalDocs: totalDocs, totalleft: totalleft });
   } catch (err) {
     res.status(500).json({ error: 'An error occurred while fetching products.', details: err });
   }
@@ -122,20 +123,20 @@ let offset = 0;
 
 exports.fetdummyproducts = async (req, res) => {
   try {
-    let limit = 15; 
+    let limit = 15;
     const offsetInt = parseInt(offset);
     const totalProductsCount = await Product.countDocuments();
     const data = await Product.find().skip(offsetInt).limit(limit);
 
-    offset += limit; 
+    offset += limit;
     if (offset >= totalProductsCount) {
-        offset = 0; 
+      offset = 0;
     }
     res.send(data);
-} catch (err) {
+  } catch (err) {
     console.error("An error occurred while fetching dummy products:", err);
     res.status(500).send("Internal Server Error");
-}
+  }
 
 }
 

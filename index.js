@@ -4,6 +4,8 @@ const server = express();
 const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const path = require("path");
+
 const productsRouter = require("./routes/Products");
 const categoriesRouter = require("./routes/Categories");
 const brandsRouter = require("./routes/Brands");
@@ -11,13 +13,9 @@ const usersRouter = require("./routes/Users");
 const authRouter = require("./routes/Auth");
 const cartRouter = require("./routes/Cart");
 const ordersRouter = require("./routes/Order");
-const { User } = require("./model/User");
-const path = require("path");
-const constrouter=require('./routes/ContactUsRouter');
+const contactUsRouter = require('./routes/ContactUsRouter');
 const ShiprocketRouter = require("./routes/Shiprocket");
-const newRealise=require('./routes/newRealise');
-const opts = {};
-
+const newRealise = require('./routes/newRealise');
 const guestRoutes = require('./routes/guestRoute');
 const constantsRoute = require('./routes/constantsRoute');
 
@@ -50,8 +48,8 @@ server.use("/users", usersRouter.router);
 server.use("/auth", authRouter.router);
 server.use("/cart", cartRouter.router);
 server.use("/orders", ordersRouter.router);
-server.use('/conatctus',constrouter.router);
-server.use('/',newRealise.router);
+server.use('/conatctus', contactUsRouter.router);
+server.use('/', newRealise.router);
 server.use('/api', guestRoutes);
 server.use('/constants', constantsRoute);
 
@@ -64,15 +62,11 @@ async function main() {
   console.log("database connected");
 }
 
-server.listen(8080,(req,res)=>{
+server.listen(8080, (req, res) => {
   console.log("server is running on port 8080");
 })
 
 server.get("/", (req, res) => {
   res.send("Hello from Arkaprava!");
 });
-
-// exports.helloWorld = onRequest((req, res) => {
-//   server(req, res);
-// });
 
